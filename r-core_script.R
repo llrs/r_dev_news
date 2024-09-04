@@ -73,33 +73,35 @@ if (tag != "R-devel") {
 latest_changes <- grepl(type, names(clean_text))
 clean_text <- clean_text[latest_changes]
 
+url_length <- 25
+toot_length_max <- 500
+usable_length <- toot_length_max - url_length - 1 # for new line
+
+trim_message <- function(message, url, max_length) {
+  if (nchar(message) > max_length) {
+    message <- substring(message, 1, max_length - 3)
+    message <- paste0(message, "...\n", url)
+  } else {
+    message <- paste0(message, "\n", url)
+  }
+  message
+}
+
 # Prepare message ####
 prepare_messages <- function(x) {
   if (!is.list(x)) {
     header <- paste0(names(x), ":\n")
     url_note <- paste0(url_feed, date)
-    if (nchar(header) + nchar(trimws(x)) > 500-25) {
-      xy <- paste0(header, substr(trimws(x), 1,
-                                  500 - nchar(header) -28), "...\n", url_note)
-    } else {
-      xy <- paste0(header, substr(trimws(x), 1,
-                                  500 - nchar(header)), "\n", url_note)
-    }
-    return(xy)
+    xy <- paste0(header, trimws(x))
+    return(trim_message(xy, url_note, usable_length))
   }
   u <- unlist(x, use.names = FALSE)
   names(u) <- rep(names(x), lengths(x))
   for (i in seq_along(u)) {
     header <- paste0(names(u)[i], ":\n")
     url_note <- paste0(url_feed, date)
-    if (nchar(header) + nchar(trimws(u[i])) > 500-25) {
-      xy <- paste0(header, substr(trimws(u[i]), 1,
-                                  500 - nchar(header) -28), "...\n", url_note)
-    } else {
-      xy <- paste0(header, substr(trimws(u[i]), 1,
-                                  500 - nchar(header)), "\n", url_note)
-    }
-    u[i] <- xy
+    xy <- paste0(header, trimws(u[i]))
+    u[i] <- trim_message(xy, url_note, usable_length)
   }
   u
 }

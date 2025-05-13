@@ -33,7 +33,9 @@ extract_text <- function(text) {
     trimws()
 
   if (length(dels) > 1) {
-    warning("More than one deleted news piece: FIXME")
+    msg <- "More than one deleted news piece: FIXME"
+    rutils::llrs_send_ntfy(msg, tag)
+    warning(msg)
   }
 
   # Text that moved
@@ -114,6 +116,8 @@ if (sum(lengths_messages) > 7) {
   lengths_messages[lengths_messages == 1L] <- messages_not_posted[lengths_messages == 1L]
   messages_not_posted <- lengths_messages
 } else if (sum(lengths_messages, na.rm = TRUE) == 0) {
+  message("Nothing to send")
+  Sys.sleep(5)
   quit(save = "no")
 }
 

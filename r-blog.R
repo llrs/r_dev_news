@@ -1,4 +1,5 @@
 # Script to toot blog
+library("xml2")
 library("rtoot")
 url_rss <- "https://blog.r-project.org/index.xml"
 
@@ -10,7 +11,6 @@ details <- xml_children(publication)
 names(list_publication) <- xml_name(details)
 list_publication[] <- xml_text(details)
 locale <- Sys.setlocale(category = "LC_ALL", locale = "C")
-Sys.setLanguage("en")
 date_publication <- as.Date(strptime(list_publication$pubDate,
                                      format = "%a, %d %b %Y %X %z",
                                      tz = "Europe/Madrid"))
@@ -20,6 +20,7 @@ d <- as.Date(fi, tz = Sys.timezone())
 published_today <- date_publication >= date_now & d <= date_now
 
 if (!published_today) {
+  message("No new publication")
   q(save = "no")
 }
 

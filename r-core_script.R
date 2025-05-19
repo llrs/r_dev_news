@@ -62,9 +62,10 @@ extract_text <- function(text) {
 }
 
 clean_text <- extract_text(text)
+
 # Prevent messaging about previous versions of R
 # Sometimes there are "CHANGES IN R 4.0.0" when it was released some years ago.
-# Post only those from the given tag (excep the branch)
+# Post only those from the given tag (except the branch)
 if (tag != "R-devel") {
   type <- gsub("-branch", "", tag) |>
     gsub(pattern = "R-", replacement = "R ", fixed = TRUE) |>
@@ -90,10 +91,13 @@ trim_message <- function(message, url, max_length) {
 }
 
 # Prepare message ####
-prepare_messages <- function(x) {
+prepare_messages <- function(x, url = url_feed) {
   if (!is.list(x)) {
     header <- paste0(names(x), ":\n")
-    url_note <- paste0(url_feed, date)
+    if (identical(header, ":\n")) {
+      header <- ""
+    }
+    url_note <- paste0(url, date)
     xy <- paste0(header, trimws(x))
     return(trim_message(xy, url_note, usable_length))
   }
@@ -101,7 +105,10 @@ prepare_messages <- function(x) {
   names(u) <- rep(names(x), lengths(x))
   for (i in seq_along(u)) {
     header <- paste0(names(u)[i], ":\n")
-    url_note <- paste0(url_feed, date)
+    if (identical(header, ":\n")) {
+      header <- ""
+    }
+    url_note <- paste0(url, date)
     xy <- paste0(header, trimws(u[i]))
     u[i] <- trim_message(xy, url_note, usable_length)
   }

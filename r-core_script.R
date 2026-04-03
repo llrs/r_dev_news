@@ -1,6 +1,7 @@
 # Script to be run as from r-devel.R or with any other tag
-date <- Sys.Date()
-message("Starting the script for ", date)
+message("Starting the script for ", Sys.Date())
+
+topic <- "llrs_internal_notifications"
 url_feed <- sprintf("https://developer.r-project.org/blosxom.cgi/%s/NEWS/", tag)
 url_rss <- paste0(url_feed, "index.rss")
 # TODO - handle failure
@@ -22,7 +23,7 @@ extract_text <- function(text) {
 
   # Split for each point
   ul <- xml_find_all(html, "//ul")
-  n_elements <- sapply(ul, function(x){length(xml_children(x))})
+  n_elements <- sapply(ul, function(x) {length(xml_children(x))})
   # Remove elements that are deleted/moved to other sections:
   dels <- html |>
     xml_find_all("./body/ul/li//del") |>
@@ -33,8 +34,8 @@ extract_text <- function(text) {
     trimws()
 
   if (length(dels) > 1) {
-    msg <- "More than one deleted news piece: FIXME"
-    rutils::llrs_send_ntfy(msg, tag)
+    msg <- "More than one deleted news piece: FIXME today!"
+    rutils::llrs_send_ntfy(msg, tag, topic = topic)
     warning(msg)
   }
 
@@ -63,18 +64,36 @@ extract_text <- function(text) {
 
 clean_text <- extract_text(text)
 
+
 # Prevent messaging about previous versions of R
 # Sometimes there are "CHANGES IN R 4.0.0" when it was released some years ago.
-# Post only those from the given tag (except the branch)
-if (tag != "R-devel") {
+# Post only those from the given tag or a greater version number (except the branch)
+if (!identical(tag, "R-devel")) {
+  # "R-4-5-branch" to R 4.5
   type <- gsub("-branch", "", tag) |>
     gsub(pattern = "R-", replacement = "R ", fixed = TRUE) |>
     gsub(pattern = "-", replacement = ".", fixed = TRUE)
 } else {
   type <- tag
 }
-latest_changes <- grepl(type, names(clean_text))
-clean_text <- clean_text[latest_changes]
+
+# Capture what is on the tag or greater version
+versions <- rversions::r_versions()
+ver <- as.numeric_version(versions$version[nrow(versions)])
+
+regex <- .standard_regexps()
+regex <- regex$valid_R_system_version
+v <- rep(as.numeric_version("0.0"), length = length(clean_text))
+p <- grep(regex, names(clean_text))
+m <- gregexec(regex, names(clean_text))
+v[p] <- unlist(regmatches(names(clean_text), m))
+
+changes_branch <- grepl(type, names(clean_text), ignore.case = TRUE)
+changes_branch <- changes_branch | v >= ver
+clean_text <- clean_text[changes_branch]
+
+# Avoid posting just a number
+clean_text <- Filter(function(x) {nchar(x) > 3}, clean_text)
 
 url_length <- 25
 toot_length_max <- 500
@@ -101,6 +120,10 @@ prepare_messages <- function(x, url = url_feed) {
     xy <- paste0(header, trimws(x))
     return(trim_message(xy, url_note, usable_length))
   }
+  if (is.null(names(x))) {
+    browser()
+    rutils::llrs_send_ntfy("NEWS don't have names", title = "CRON", topic = topic)
+  }
   u <- unlist(x, use.names = FALSE)
   names(u) <- rep(names(x), lengths(x))
   for (i in seq_along(u)) {
@@ -115,6 +138,8 @@ prepare_messages <- function(x, url = url_feed) {
   u
 }
 saveRDS(clean_text, file = file_info)
+
+
 
 messages_not_posted <- setdiff(clean_text, messages_not_posted)
 lengths_messages <- lengths(messages_not_posted)
@@ -135,9 +160,8 @@ if (!file.exists(token_file)) {
   stop("Missing credentials to post as the bot")
 }
 token <- readRDS(token_file)
-a <- sapply(messages_ready, function(x){
+a <- sapply(messages_ready, function(x) {
   post_toot(status = x, language = "en", token = token)
   Sys.sleep(0.1)
 })
-#rutils::llrs_send_ntfy("Successfully ran r-devel cron job", title = "CRON")
 message("Successfully ran the script for ", date)

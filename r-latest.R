@@ -1,5 +1,6 @@
 library("xml2")
 library("rtoot")
+library("rvest")
 
 # Extract data ####
 tag <- "R-4-5-branch"

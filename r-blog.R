@@ -11,15 +11,17 @@ details <- xml_children(publication)
 names(list_publication) <- xml_name(details)
 list_publication[] <- xml_text(details)
 locale <- Sys.setlocale(category = "LC_ALL", locale = "C")
-date_publication <- as.Date(strptime(list_publication$pubDate,
-                                     format = "%a, %d %b %Y %X %z",
-                                     tz = "Europe/Madrid"))
-date_now <- Sys.Date()
-fi <- file.mtime("r-blog.log")
-d <- as.Date(fi, tz = Sys.timezone())
-published_today <- date_publication >= date_now & d <= date_now
 
-if (!published_today) {
+# Post only if it is the first time found (not every hour)
+time_publication <- strptime(list_publication$pubDate,
+                             format = "%a, %d %b %Y %X %z",
+                             tz = "Europe/Madrid")
+time_now <- Sys.time()
+
+new_publicaton <- difftime(time_now, time_publication, units = "hours") < 1.5
+
+
+if (!new_publicaton) {
   message("No new publication")
   q(save = "no")
 }
